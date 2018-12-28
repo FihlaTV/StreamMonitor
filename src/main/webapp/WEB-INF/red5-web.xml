@@ -38,6 +38,9 @@
 
 	<bean id="app.settings" class="io.antmedia.AppSettings">
 	</bean>
+	
+	<bean id="monitor.manager" class="io.antmedia.app.monitor.StreamMonitorManager">
+	</bean>
 
 
 	<bean id="dataStoreFactory"

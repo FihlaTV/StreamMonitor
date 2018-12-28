@@ -54,6 +54,15 @@
 		<url-pattern>/rest/*</url-pattern>
 	</servlet-mapping>
 	 
+	<servlet>
+	  <servlet-name>HookListenerServlet</servlet-name>
+	  <servlet-class>io.antmedia.app.servlet.HookListenerServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+	  <servlet-name>HookListenerServlet</servlet-name>
+	  <url-pattern>/amshooks</url-pattern>
+	</servlet-mapping>
+	 
 	<filter>
 		<filter-name>TokenFilter</filter-name>
 		<filter-class>io.antmedia.filter.TokenFilterManager</filter-class>

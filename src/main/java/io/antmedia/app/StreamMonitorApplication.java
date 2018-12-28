@@ -15,12 +15,19 @@ import io.antmedia.AntMediaApplicationAdapter;
 public class StreamMonitorApplication extends AntMediaApplicationAdapter {
 
 	protected static Logger logger = LoggerFactory.getLogger(StreamMonitorApplication.class);
+	public static IScope scope;
 
 	public static final String STORAGE_FORWARD_URL = "https://s3.eu-central-1.amazonaws.com/";
 
 	/** {@inheritDoc} */
 	@Override
 	public boolean connect(IConnection conn, IScope scope, Object[] params) {
+		return true;
+	}
+	
+	@Override
+	public boolean start(IScope scope) {
+		StreamMonitorApplication.scope = scope;
 		return true;
 	}
 
