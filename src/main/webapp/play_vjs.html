@@ -1,0 +1,93 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+pageEncoding="UTF-8"%>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Ant Media Server</title>
+<link href="http://vjs.zencdn.net/6.6.0/video-js.css" rel="stylesheet">
+<!-- If you'd like to support IE8 -->
+<script src="http://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script>
+<link href="css/player.css" rel="stylesheet">
+</head>
+
+<body>
+	<div id="video_info"></div>
+	<div style="width: 100%; max-width: 960px;" id="video_container">
+		<video id="video-player"
+			class="video-js vjs-default-skin vjs-16-9 vjs-big-play-centered"
+			controls preload="auto" data-setup='{"fluid": true}'>
+			<p class="vjs-no-js">
+				To view this video please enable JavaScript, and consider upgrading
+				to a web browser that <a
+					href="http://videojs.com/html5-video-support/" target="_blank">supports
+					HTML5 video</a>
+			</p>
+		</video>
+	</div>
+
+	<script src="http://vjs.zencdn.net/6.6.0/video.js"></script>
+	<script
+		src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.12.2/videojs-contrib-hls.min.js"></script>
+	<script src="js/fetch.js"></script>
+	<script src="js/promise.min.js"></script>
+	<script src="js/fetch.stream.js"></script>
+
+	<script>
+	
+	function initializePlayer(name, extension, token) {
+		var type;
+		var liveStream = false;
+		if (extension == "mp4") {
+			type = "video/mp4";
+			liveStream = false;
+		}
+		else if (extension == "m3u8") {
+			type = "application/x-mpegURL";
+			liveStream = true;
+		}
+		else {
+			console.log("Unknown extension: " + extension);
+			return;
+		}
+
+		var preview = name;
+		if (name.endsWith("_adaptive")) {
+			preview = name.substring(0, name.indexOf("_adaptive"));
+		}
+
+		var player = videojs('video-player', {
+					poster: "previews/"+preview+".png"
+		});
+
+		player.src({
+  			src: "streams/" + name + "." + extension + "?token=" + token,
+  			type: type,
+		});
+		
+		player.poster("previews/"+preview+".png");
+
+		if (autoPlay) {
+			player.play();
+		}
+		document.getElementById("video_container").style.display = "block";
+		document.getElementById("video_info").hidden = true;
+	}
+
+
+	var name = "<%= request.getParameter("name") %>";
+	var token = "<%= request.getParameter("token") %>";
+
+	var pAutoplay = "<%= request.getParameter("autoplay") %>";
+	var autoPlay = false;
+	if (pAutoplay == "true" && !isMobile()) {
+		autoPlay = true;
+	}
+	
+	
+
+	tryToPlay(name, token);
+
+	
+	</script>
+</body>
+</html>

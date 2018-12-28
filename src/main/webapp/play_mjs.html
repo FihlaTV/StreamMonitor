@@ -1,0 +1,106 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+pageEncoding="UTF-8"%>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Ant Media Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+    <link rel="stylesheet" href="js/mediaelement/mediaelementplayer.css">
+    <style>
+
+        html, body {
+            overflow-x: hidden;
+        }
+
+        #video_container {
+            padding: 0 10px 10px 0px;
+        }
+    </style>
+    <link href="css/player.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <div id="video_info">Stream will start playing automatically<br/>when it is live</div>
+    <div id="video_container" >
+
+        <div class="players" id="player1-container">
+
+            <div class="media-wrapper">
+                <video id="mediaelementplayer" width="640" height="360" style="max-width:100%;"  preload="none" controls playsinline webkit-playsinline>
+                </video>
+            </div>
+        </div>
+        
+    <script src="js/mediaelement/mediaelement-and-player.js"></script>
+    <script src="js/fetch.js"></script>
+	<script src="js/promise.min.js"></script>
+	<script src="js/fetch.stream.js"></script>
+
+    <script>
+    var stretching =  'auto';
+    	var name = "<%= request.getParameter("name") %>";
+    	var token = "<%= request.getParameter("token") %>";
+    	
+    	var pAutoplay = "<%= request.getParameter("autoplay") %>";
+    	var autoPlay = false;
+    	if (pAutoplay == "true" && !isMobile()) {
+    		autoPlay = true;
+    	}
+    	
+    	function initializePlayer(name, extension, token) {
+    		var type;
+    		var liveStream = false;
+    		if (extension == "mp4") {
+    			type = "video/mp4";
+    			liveStream = false;
+    		}
+    		else if (extension == "m3u8") {
+    			type = "application/x-mpegurl";
+    			liveStream = true;
+    		}
+    		else {
+    			console.log("Unknown extension: " + extension);
+    			return;
+    		}
+    		
+    		var preview = name;
+    		if (name.endsWith("_adaptive")) {
+    			preview = name.substring(0, name.indexOf("_adaptive"));
+    		}
+    		
+    		var mjsPlayer = new MediaElementPlayer('mediaelementplayer', {
+    			stretching: 'auto',
+    			pluginPath: './js/mediaelement/',
+    			forceLive: liveStream,
+
+    			success: function (media) {
+
+    			},
+    			
+    			error: function (media) {
+    				
+    			}
+    		});
+        mjsPlayer.src = "streams/" + name + "." + extension + "?token=" + token;
+        mjsPlayer.setPoster("previews/" + preview + ".png");
+        
+        if (autoPlay) {
+        		mjsPlayer.play();
+        }
+        
+        document.getElementById("video_container").style.display = "block";
+        document.getElementById("video_info").hidden = true;
+    		
+    	}
+    	
+    	tryToPlay(name, token);
+     
+    </script>
+</body>
+</html>

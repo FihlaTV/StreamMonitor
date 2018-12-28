@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd 
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<!-- Defines a properties file for dereferencing variables -->
+	<bean id="placeholderConfig"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location"
+			value="/WEB-INF/red5-web.properties" />
+	</bean>
+
+	<!-- Defines the web context -->
+	<bean id="web.context" class="org.red5.server.Context"
+		autowire="byType" />
+
+	<!-- Defines the web scopes -->
+	<bean id="web.scope" class="org.red5.server.scope.WebScope">
+		<property name="server" ref="red5.server" />
+		<property name="parent" ref="global.scope" />
+		<property name="context" ref="web.context" />
+		<property name="handler" ref="web.handler" />
+		<property name="contextPath" value="${webapp.contextPath}" />
+		<property name="virtualHosts" value="${webapp.virtualHosts}" />
+	</bean>
+
+	<context:component-scan
+		base-package="io.antmedia.rest" />
+
+	<bean id="preference.store"
+		class="io.antmedia.datastore.preference.PreferenceStore">
+		<constructor-arg value="/WEB-INF/red5-web.properties" />
+	</bean>
+
+	<bean id="app.settings" class="io.antmedia.AppSettings">
+	</bean>
+
+
+	<bean id="dataStoreFactory"
+		class="io.antmedia.datastore.db.DataStoreFactory">
+		<property name="appName" value="${db.app.name}" />
+		<property name="dbName" value="${db.name}" />
+		<property name="dbType" value="${db.type}" />
+		<property name="dbHost" value="${db.host}" />
+		<property name="dbUser" value="${db.user}" />
+		<property name="dbPassword" value="${db.password}" />
+	</bean>
+
+	<bean id="acceptOnlyStreamsInDataStore"
+		class="io.antmedia.security.AcceptOnlyStreamsInDataStore">
+		<property name="enabled"
+			value="${settings.acceptOnlyStreamsInDataStore}" />
+		<property name="dataStoreFactory" ref="dataStoreFactory" />
+	</bean>
+
+	<bean id="hls.viewerstats"
+		class="io.antmedia.statistic.HlsViewerStats" />
+
+
+
+	<bean id="token.service"
+		class="#{ T(io.antmedia.rest.BroadcastRestService).isEnterprise() ? 'io.antmedia.enterprise.security.TokenService' : 'io.antmedia.security.MockTokenService' }">
+
+	</bean>
+
+
+	<!-- <bean id="app.storageClient" class="io.antmedia.storage.AmazonS3StorageClient"> 
+		<property name="accessKey" value="Enter your S3_ACCESS_KEY" /> <property 
+		name="secretKey" value="Enter your S3_SECRET_KEY" /> <property name="region" 
+		value="Enter your REGION_NAME e.g. eu-central-1" /> <property name="storageName" 
+		value="Enter your BUCKET_NAME" /> </bean> -->
+
+	<!-- Defines the web handler which acts as an applications endpoint -->
+	<bean id="web.handler"
+		class="io.antmedia.app.StreamMonitorApplication">
+		<property name="appSettings" ref="app.settings" />
+		<property name="dataStoreFactory" ref="dataStoreFactory" />
+		<property name="streamPublishSecurityList">
+			<list>
+				<ref bean="acceptOnlyStreamsInDataStore" />
+				<ref bean="token.service"/> 
+				<bean class="io.antmedia.security.ExpireStreamPublishSecurity">
+					<property name="dataStoreFactory" ref="dataStoreFactory" />
+				</bean>
+			</list>
+		</property>
+	</bean>
+	<!-- <bean id="exporter" class="org.springframework.jmx.export.MBeanExporter" 
+		lazy-init="false"> <property name="beans"> <map> <entry key="bean:name=appSettingsBeanPSCP" 
+		value-ref="app.settings"/> </map> </property> </bean> -->
+
+
+
+</beans>
