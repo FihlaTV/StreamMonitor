@@ -39,9 +39,15 @@
 	<bean id="app.settings" class="io.antmedia.AppSettings">
 	</bean>
 	
-	<bean id="monitor.manager" class="io.antmedia.app.monitor.StreamMonitorManager">
+	<bean id="monitor.datastore" class="io.antmedia.app.datastore.StreamMonitorStore">
+		<constructor-arg value="monitordb" />
 	</bean>
-
+	
+	<bean id="monitor.manager" class="io.antmedia.app.monitor.StreamMonitorManager">
+		<property name="store" ref="monitor.datastore" />
+	</bean>
+	
+	<context:component-scan base-package="io.antmedia.app.rest" />
 
 	<bean id="dataStoreFactory"
 		class="io.antmedia.datastore.db.DataStoreFactory">
