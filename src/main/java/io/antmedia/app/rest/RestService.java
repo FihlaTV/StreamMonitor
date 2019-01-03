@@ -3,6 +3,7 @@ package io.antmedia.app.rest;
 import javax.servlet.ServletContext;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -40,14 +41,14 @@ public class RestService {
 	
 	/**
 	 * Add a stream to be recorded.
-	 * Get method should be used.
+	 * Post method should be used.
 	 * 
 	 * application/json
 	 * 
 	 * @param streamId
 	 * @return JSON data
 	 */
-	@GET
+	@POST
 	@Path("/addStreamRecording/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -60,14 +61,14 @@ public class RestService {
 
 	/**
 	 * Remove a stream from recording list.
-	 * Get method should be used.
+	 * Post method should be used.
 	 * 
 	 * application/json
 	 * 
 	 * @param streamId
 	 * @return JSON data
 	 */
-	@GET
+	@POST
 	@Path("/removeStreamRecording/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
