@@ -45,6 +45,10 @@
 	
 	<bean id="monitor.manager" class="io.antmedia.app.monitor.StreamMonitorManager">
 		<property name="store" ref="monitor.datastore" />
+		<property name="sourceApp" value="WebRTCAppEE" />
+		<property name="previewCapturePeriod" value="1000" />
+		<property name="hlsCapturePeriod" value="3000" />
+		<property name="hlsResolution" value="480" />
 	</bean>
 	
 	<context:component-scan base-package="io.antmedia.app.rest" />

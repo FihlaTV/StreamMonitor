@@ -13,9 +13,13 @@ public class StreamMonitorManager {
 	public static final String BEAN_NAME = "monitor.manager";
 	
 	private StreamMonitorStore store;
+	private String sourceApp;
+	private String hlsResolution;
+	private int previewCapturePeriod;
+	private int hlsCapturePeriod;
 	
 	private Logger logger = LoggerFactory.getLogger(StreamMonitorManager.class);
-	ConcurrentHashMap<String, StreamCapturer> activeStreams = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<String, StreamCapturer> activeStreams = new ConcurrentHashMap<>();
 
 	public void newHookMessage(String origin, String streamId, String action, String streamName, String category) {
 		if(action.contentEquals("liveStreamStarted")) {
@@ -73,15 +77,15 @@ public class StreamMonitorManager {
 	}
 	
 	public void startCapturing(Stream stream) {
-		StreamCapturer capturer = new StreamCapturer(stream.getOrigin(), stream.getStreamId());
-		activeStreams.put(stream.getStreamId(), capturer);
+		StreamCapturer capturer = new StreamCapturer(stream.getOrigin(), stream.getStreamId(), this);
+		getActiveStreams().put(stream.getStreamId(), capturer);
 		capturer.startCapturing();
 	}
 	
 	public void stopCapturing(Stream stream) {
-		StreamCapturer capturer = activeStreams.get(stream.getStreamId());
+		StreamCapturer capturer = getActiveStreams().get(stream.getStreamId());
 		capturer.stopCapturing();	
-		activeStreams.remove(stream.getStreamId());
+		getActiveStreams().remove(stream.getStreamId());
 	}
 
 	public StreamMonitorStore getStore() {
@@ -90,5 +94,41 @@ public class StreamMonitorManager {
 
 	public void setStore(StreamMonitorStore store) {
 		this.store = store;
+	}
+	
+	public String getSourceApp() {
+		return sourceApp;
+	}
+
+	public void setSourceApp(String sourceApp) {
+		this.sourceApp = sourceApp;
+	}
+
+	public String getHlsResolution() {
+		return hlsResolution;
+	}
+
+	public void setHlsResolution(String hlsResolution) {
+		this.hlsResolution = hlsResolution;
+	}
+
+	public int getPreviewCapturePeriod() {
+		return previewCapturePeriod;
+	}
+
+	public void setPreviewCapturePeriod(int previewCapturePeriod) {
+		this.previewCapturePeriod = previewCapturePeriod;
+	}
+
+	public int getHlsCapturePeriod() {
+		return hlsCapturePeriod;
+	}
+
+	public void setHlsCapturePeriod(int hlsCapturePeriod) {
+		this.hlsCapturePeriod = hlsCapturePeriod;
+	}
+
+	public ConcurrentHashMap<String, StreamCapturer> getActiveStreams() {
+		return activeStreams;
 	}
 }

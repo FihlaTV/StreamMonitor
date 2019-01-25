@@ -29,10 +29,7 @@ public class StreamCapturer {
 
 	private Vertx vertx;
 
-	private long pngCapturePeriod = 1000;
 	private long pngJobName;
-
-	private long hlsCapturePeriod = 2000;
 	private long hlsJobName;
 
 	private File pngDir;
@@ -44,47 +41,47 @@ public class StreamCapturer {
 
 	private String baseDir;
 
-	public StreamCapturer(String origin, String streamId) {
+	private StreamMonitorManager manager;
+
+	public StreamCapturer(String origin, String streamId, StreamMonitorManager manager) {
 		this.origin = origin;
 		this.streamId = streamId;
+		this.manager = manager;
 
-		baseDir = System.getProperty("red5.root")+"/"
-				+ "webapps/"
+		baseDir = "webapps/"
 				+ StreamMonitorApplication.scope.getName();
 	}
 
 	public void startCapturing() {
 		initVertx();
 		initDirs();
-		pngJobName = vertx.setPeriodic(pngCapturePeriod, (l) -> {
-			String pngUrl = "http://"+origin+":5080/WebRTCAppEE/previews/"+streamId+".png";
-			try {
-				FileUtils.copyURLToFile(new URL(pngUrl), new File(pngDir, System.currentTimeMillis()+".png"));
-			} catch (MalformedURLException e) {
-				logger.error(e.getMessage());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}
+		pngJobName = getVertx().setPeriodic(manager.getPreviewCapturePeriod(), (l) -> {
+			String pngUrl = "http://"+origin+":5080/"+manager.getSourceApp()+"/previews/"+streamId+".png";
+			copyURLtoFile(pngUrl, new File(pngDir, System.currentTimeMillis()+".png"));
 		});
 		logger.info("PngCapturerJobName for stream {} at {} is {}", streamId, origin, pngJobName);
 
-		hlsJobName = vertx.setPeriodic(hlsCapturePeriod, (l) -> {
-			String m3u8Url = "http://"+origin+":5080/WebRTCAppEE/streams/"+streamId+"_480p.m3u8";
-			HttpGet httpGet = new HttpGet(m3u8Url);
-
-			try {
-				CloseableHttpResponse response = HttpClients.createDefault().execute(httpGet);
-				String m3u8Content = EntityUtils.toString(response.getEntity());
-				downloadTsFiles(m3u8Content);
-			} catch (ClientProtocolException e) {
-				logger.error(e.getMessage());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}
+		hlsJobName = getVertx().setPeriodic(manager.getHlsCapturePeriod(), (l) -> {
+			String m3u8Url = "http://"+origin+":5080/"+manager.getSourceApp()+"/streams/"+streamId+"_"+manager.getHlsResolution()+"p.m3u8";
+			captureM3U8(m3u8Url);
 		});
 		logger.info("HlsCapturerJobName for stream {} at {} is {}", streamId, origin, hlsJobName);
 	}
 
+
+	public void captureM3U8(String m3u8Url) {
+		HttpGet httpGet = new HttpGet(m3u8Url);
+
+		try {
+			CloseableHttpResponse response = HttpClients.createDefault().execute(httpGet);
+			String m3u8Content = EntityUtils.toString(response.getEntity());
+			downloadTsFiles(m3u8Content);
+		} catch (ClientProtocolException e) {
+			logger.error(e.getMessage());
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}		
+	}
 
 	private void initDirs() {
 		pngDir = new File(baseDir+"/previews/"+streamId);
@@ -108,15 +105,19 @@ public class StreamCapturer {
 	}
 
 	public void downloadSegment(HLSSegment segment) {
-		String tsUrl = "http://"+origin+":5080/WebRTCAppEE/streams/"+segment.name;
-		
+		String tsUrl = "http://"+origin+":5080/"+manager.getSourceApp()+"/streams/"+segment.name;
+		copyURLtoFile(tsUrl, new File(hlsDir, segment.name));
+	}
+
+	public void copyURLtoFile(String url, File file) {
 		try {
-			FileUtils.copyURLToFile(new URL(tsUrl), new File(hlsDir, segment.name));
+			FileUtils.copyURLToFile(new URL(url), file);
 		} catch (MalformedURLException e) {
 			logger.error(e.getMessage());
 		} catch (IOException e) {
 			logger.error(e.getMessage());
 		}
+		
 	}
 
 	public void updateM3U8Files() {
@@ -163,14 +164,14 @@ public class StreamCapturer {
 
 	public void stopCapturing() {
 		logger.info("stopCapturing for stream {} at {}", streamId, origin);
-		vertx.cancelTimer(pngJobName);
-		vertx.cancelTimer(hlsJobName);
+		getVertx().cancelTimer(pngJobName);
+		getVertx().cancelTimer(hlsJobName);
 	}
 
-	protected void initVertx() {
+	public void initVertx() {
 		if (StreamMonitorApplication.scope.getContext().getApplicationContext().containsBean(AntMediaApplicationAdapter.VERTX_BEAN_NAME)) {
-			vertx = (Vertx)StreamMonitorApplication.scope.getContext().getApplicationContext().getBean(AntMediaApplicationAdapter.VERTX_BEAN_NAME);
-			logger.info("vertx exist {}", vertx);
+			setVertx((Vertx)StreamMonitorApplication.scope.getContext().getApplicationContext().getBean(AntMediaApplicationAdapter.VERTX_BEAN_NAME));
+			logger.info("vertx exist {}", getVertx());
 		}
 		else {
 			logger.info("No vertx bean StreamMonitorApplication");
@@ -179,6 +180,14 @@ public class StreamCapturer {
 
 	public ArrayList<HLSSegment> getAllSegments() {
 		return allSegments;
+	}
+
+	public Vertx getVertx() {
+		return vertx;
+	}
+
+	public void setVertx(Vertx vertx) {
+		this.vertx = vertx;
 	}
 
 	public class HLSSegment {
