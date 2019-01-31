@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
+import com.restfb.types.Message;
 
 import io.antmedia.app.StreamMonitorApplication;
 import io.antmedia.app.monitor.StreamCapturer;
@@ -60,8 +61,9 @@ public class RestService {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Result addStream(@PathParam("id") String streamId) {
 		boolean result = true;
-		getManager().recordStream(streamId);
+		String message = getManager().recordStream(streamId);
 		Result operationResult = new Result(result);
+		operationResult.setMessage(message);
 		return operationResult;
 	}
 
@@ -80,8 +82,9 @@ public class RestService {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Result removeStream(@PathParam("id") String streamId) {
 		boolean result = true;
-		getManager().stopStreamRecording(streamId);
+		String message = getManager().stopStreamRecording(streamId);
 		Result operationResult = new Result(result);
+		operationResult.setMessage(message);
 		return operationResult;
 	}
 	

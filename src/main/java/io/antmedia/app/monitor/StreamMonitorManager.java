@@ -42,13 +42,20 @@ public class StreamMonitorManager {
 		}
 	}
 
-	public void recordStream(String streamId) {
+	public String recordStream(String streamId) {
 		logger.info("recordStream with id:{}", streamId);
+		
+		String message = streamId+" added.";
 
 		Stream stream = getStore().updateStreamRecord(streamId, true);
 		if(stream.isStarted()) {
+			message += "Capturing has been started since stream is already active.";
 			startCapturing(stream);		
 		}
+		
+		message += "Capturing has not been started since stream is not active.";
+		
+		return message;
 	}
 	
 	private void streamEnded(String origin, String streamId) {
@@ -64,16 +71,22 @@ public class StreamMonitorManager {
 		}
 	}
 	
-	public void stopStreamRecording(String streamId) {
+	public String stopStreamRecording(String streamId) {
 		logger.info("stopStreamRecording with id:{}", streamId);
 
+		String message = streamId+" removed.";
+		
 		Stream stream = getStore().updateStreamRecord(streamId, false);
 		if(stream.isStarted()) {
 			//this means stream started before this message so there is capturer
 			stopCapturing(stream);
+			message += "Capturing has been ended.";
 		} else {
 			getStore().deleteStream(streamId);
+			message += "Capturing had not been started by transcoder.";
 		}
+		
+		return message;
 	}
 	
 	public void startCapturing(Stream stream) {

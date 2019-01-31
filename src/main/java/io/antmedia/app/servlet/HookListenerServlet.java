@@ -30,7 +30,7 @@ public class HookListenerServlet extends HttpServlet{
 		String streamName = req.getParameter("streamName");
 		String category = req.getParameter("category");
 
-		super.doPost(req, resp);
+		//super.doPost(req, resp);
 		
 		getManager().newHookMessage(origin, streamId, action, streamName, category);
 	}
