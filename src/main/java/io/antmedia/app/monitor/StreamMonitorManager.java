@@ -5,110 +5,78 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.antmedia.app.datastore.StreamMonitorStore;
-import io.antmedia.app.datastore.Stream;
+import io.antmedia.AntMediaApplicationAdapter;
+import io.antmedia.app.StreamMonitorApplication;
+import io.antmedia.cluster.DBReader;
+import io.vertx.core.Vertx;
 
 public class StreamMonitorManager {
 
 	public static final String BEAN_NAME = "monitor.manager";
-	
-	private StreamMonitorStore store;
+
 	private String sourceApp;
 	private String hlsResolution;
 	private int previewCapturePeriod;
 	private int hlsCapturePeriod;
-	
+	private Vertx vertx;
+
 	private Logger logger = LoggerFactory.getLogger(StreamMonitorManager.class);
 	private ConcurrentHashMap<String, StreamCapturer> activeStreams = new ConcurrentHashMap<>();
 
-	public void newHookMessage(String origin, String streamId, String action, String streamName, String category) {
-		if(action.contentEquals("liveStreamStarted")) {
-			newStreamStrated(origin, streamId, streamName);
-		} 
-		else if(action.contentEquals("liveStreamEnded")) {
-			streamEnded(origin, streamId);
-		} 
-		else {
-			logger.info("unknown hook message");
-		}
-	}
-
-	private void newStreamStrated(String origin, String streamId, String streamName) {
-		logger.info("new stream started at {} with id:{}", origin, streamId);
-
-		Stream stream = getStore().updateStreamStarted(streamId, origin, true);
-		if(stream.isRecord()) {
-			startCapturing(stream);	
-		}
-	}
-
 	public String recordStream(String streamId) {
 		logger.info("recordStream with id:{}", streamId);
-		
-		String message = streamId+" added.";
 
-		Stream stream = getStore().updateStreamRecord(streamId, true);
-		if(stream.isStarted()) {
-			message += "Capturing has been started since stream is already active.";
-			startCapturing(stream);		
+		String message;
+		if(!getActiveStreams().containsKey(streamId)) {
+			startCapturing(streamId);		
+			message = streamId+" added.";
 		}
-		
-		message += "Capturing has not been started since stream is not active.";
-		
+		else {
+			logger.warn("capturer is already working for {}", streamId);
+			message = "capturer is already working for " + streamId;
+		}
+
 		return message;
 	}
-	
-	private void streamEnded(String origin, String streamId) {
-		logger.info("stream stoped at {} with id:{}", origin, streamId);
-		Stream stream = getStore().updateStreamStarted(streamId, origin, false);
-		
-		if(stream.isRecord()) {
-			//this means there is an active recording but now stream finished
-			stopCapturing(stream);
-		} 
-		else {
-			getStore().deleteStream(streamId);
-		}
-	}
-	
+
 	public String stopStreamRecording(String streamId) {
 		logger.info("stopStreamRecording with id:{}", streamId);
 
+		stopCapturing(streamId);
 		String message = streamId+" removed.";
-		
-		Stream stream = getStore().updateStreamRecord(streamId, false);
-		if(stream.isStarted()) {
-			//this means stream started before this message so there is capturer
-			stopCapturing(stream);
-			message += "Capturing has been ended.";
-		} else {
-			getStore().deleteStream(streamId);
-			message += "Capturing had not been started by transcoder.";
-		}
-		
+
 		return message;
 	}
-	
-	public void startCapturing(Stream stream) {
-		StreamCapturer capturer = new StreamCapturer(stream.getOrigin(), stream.getStreamId(), this);
-		getActiveStreams().put(stream.getStreamId(), capturer);
-		capturer.startCapturing();
+
+	public void startCapturing(String streamId) {
+		if(vertx == null) {
+			initVertx();
+		}
+		
+		StreamCapturer capturer = new StreamCapturer(streamId, this);
+		getActiveStreams().put(streamId, capturer);
+
+		getVertx().setPeriodic(Math.min(previewCapturePeriod, hlsCapturePeriod), (id) -> {
+			String origin = DBReader.instance.getHost(streamId, sourceApp);
+
+			if(origin != null) {
+				capturer.setOrigin(origin);
+				logger.info("origin determined for {} as {}", streamId, origin);
+				capturer.startCapturing();
+				getVertx().cancelTimer(id);
+			}
+			else {
+				logger.info("origin undetermined for {}, stream has not started yet", streamId);
+			}
+		});
 	}
-	
-	public void stopCapturing(Stream stream) {
-		StreamCapturer capturer = getActiveStreams().get(stream.getStreamId());
+
+	public void stopCapturing(String streamId) {
+		StreamCapturer capturer = getActiveStreams().get(streamId);
 		capturer.stopCapturing();	
-		getActiveStreams().remove(stream.getStreamId());
+		getActiveStreams().remove(streamId);
 	}
 
-	public StreamMonitorStore getStore() {
-		return store;
-	}
-
-	public void setStore(StreamMonitorStore store) {
-		this.store = store;
-	}
-	
 	public String getSourceApp() {
 		return sourceApp;
 	}
@@ -143,5 +111,23 @@ public class StreamMonitorManager {
 
 	public ConcurrentHashMap<String, StreamCapturer> getActiveStreams() {
 		return activeStreams;
+	}
+
+	public void initVertx() {
+		if (StreamMonitorApplication.scope.getContext().getApplicationContext().containsBean(AntMediaApplicationAdapter.VERTX_BEAN_NAME)) {
+			setVertx((Vertx)StreamMonitorApplication.scope.getContext().getApplicationContext().getBean(AntMediaApplicationAdapter.VERTX_BEAN_NAME));
+			logger.info("vertx exist {}", getVertx());
+		}
+		else {
+			logger.info("No vertx bean StreamMonitorApplication");
+		}
+	}
+
+	public Vertx getVertx() {
+		return vertx;
+	}
+
+	public void setVertx(Vertx vertx) {
+		this.vertx = vertx;
 	}
 }

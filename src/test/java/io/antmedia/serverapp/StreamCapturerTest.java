@@ -43,7 +43,7 @@ public class StreamCapturerTest {
 	public void testParseM3U8() {
 		StreamMonitorApplication.scope = mock(IScope.class);
 		StreamMonitorManager manager = new StreamMonitorManager();
-		StreamCapturer scReal = new StreamCapturer("", "", manager);
+		StreamCapturer scReal = new StreamCapturer("", manager);
 		StreamCapturer sc = spy(scReal);
 		doNothing().when(sc).downloadSegment(any());
 		doNothing().when(sc).updateM3U8Files();
@@ -61,18 +61,19 @@ public class StreamCapturerTest {
 	public void testSettings() {
 		StreamMonitorApplication.scope = mock(IScope.class);
 		StreamMonitorManager manager = new StreamMonitorManager();
+		manager.setVertx(io.vertx.core.Vertx.vertx());
 		manager.setHlsCapturePeriod(2000);
 		manager.setPreviewCapturePeriod(1000);
 		manager.setSourceApp("DummyApp");
 		manager.setHlsResolution("240");
 		
-		StreamCapturer scReal = new StreamCapturer("origin_url", "test_stream", manager);
-		scReal.setVertx(io.vertx.core.Vertx.vertx());
+		StreamCapturer scReal = new StreamCapturer("test_stream", manager);
+		scReal.setOrigin("origin_url");
 		
 		StreamCapturer sc = spy(scReal);
-		doNothing().when(sc).initVertx();
 		doNothing().when(sc).captureM3U8(any());
 		doNothing().when(sc).copyURLtoFile(any(), any());
+		
 
 		sc.startCapturing();
 		try {

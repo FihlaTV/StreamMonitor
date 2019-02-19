@@ -39,12 +39,7 @@
 	<bean id="app.settings" class="io.antmedia.AppSettings">
 	</bean>
 	
-	<bean id="monitor.datastore" class="io.antmedia.app.datastore.StreamMonitorStore">
-		<constructor-arg value="monitordb" />
-	</bean>
-	
 	<bean id="monitor.manager" class="io.antmedia.app.monitor.StreamMonitorManager">
-		<property name="store" ref="monitor.datastore" />
 		<property name="sourceApp" value="WebRTCAppEE" />
 		<property name="previewCapturePeriod" value="1000" />
 		<property name="hlsCapturePeriod" value="3000" />

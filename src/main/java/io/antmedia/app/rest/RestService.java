@@ -14,13 +14,12 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.commons.collections.ListUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.google.gson.Gson;
-import com.restfb.types.Message;
 
 import io.antmedia.app.StreamMonitorApplication;
 import io.antmedia.app.monitor.StreamCapturer;
@@ -59,8 +58,9 @@ public class RestService {
 	@Path("/addStreamRecording/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Result addStream(@PathParam("id") String streamId) {
+	public Result addStream(@PathParam("id") String streamId, @RequestParam("id") String origin) {
 		boolean result = true;
+		
 		String message = getManager().recordStream(streamId);
 		Result operationResult = new Result(result);
 		operationResult.setMessage(message);
