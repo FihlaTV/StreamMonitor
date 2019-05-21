@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.ClientProtocolException;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.antmedia.app.StreamMonitorApplication;
+import io.antmedia.cluster.DBReader;
 import io.vertx.core.Vertx;
 
 public class StreamCapturer {
@@ -43,9 +45,14 @@ public class StreamCapturer {
 	private String baseDir;
 
 	private StreamMonitorManager manager;
-	
+
 	CookieStore cookieStore = new BasicCookieStore();
 	HttpContext httpContext = new BasicHttpContext();
+
+	private long originCheckJobName;
+
+	private AtomicBoolean stopCalled = new AtomicBoolean(false);
+	private Object lock = new Object();
 
 	public StreamCapturer(String streamId, StreamMonitorManager manager) {
 		this.streamId = streamId;
@@ -56,23 +63,29 @@ public class StreamCapturer {
 	}
 
 	public void startCapturing() {
-		initDirs();
+		synchronized (lock) {
+			if(stopCalled.get()) {
+				logger.warn("Stop invoked before start for {}", streamId);
+				return;
+			}
+			initDirs();
 
-		pngJobName = getVertx().setPeriodic(manager.getPreviewCapturePeriod(), (l) -> {
-			String pngUrl = "http://"+getOrigin()+":5080/"+manager.getSourceApp()+"/previews/"+streamId+".png";
-			copyURLtoFile(pngUrl, new File(pngDir, System.currentTimeMillis()+".png"));
-		});
-		logger.info("PngCapturerJobName for stream {} at {} is {}", streamId, getOrigin(), pngJobName);
+			pngJobName = getVertx().setPeriodic(manager.getPreviewCapturePeriod(), (l) -> {
+				String pngUrl = "http://"+getOrigin()+":5080/"+manager.getSourceApp()+"/previews/"+streamId+".png";
+				copyURLtoFile(pngUrl, new File(pngDir, System.currentTimeMillis()+".png"));
+			});
+			logger.info("PngCapturerJobName for stream {} at {} is {}", streamId, getOrigin(), pngJobName);
 
-		hlsJobName = getVertx().setPeriodic(manager.getHlsCapturePeriod(), (l) -> {
-			String m3u8Url = "http://"+getOrigin()+":5080/"+manager.getSourceApp()+"/streams/"+streamId+"_"+manager.getHlsResolution()+"p.m3u8";
-			captureM3U8(m3u8Url);
-		});
-		logger.info("HlsCapturerJobName for stream {} at {} is {}", streamId, getOrigin(), hlsJobName);
+			hlsJobName = getVertx().setPeriodic(manager.getHlsCapturePeriod(), (l) -> {
+				String m3u8Url = "http://"+getOrigin()+":5080/"+manager.getSourceApp()+"/streams/"+streamId+"_"+manager.getHlsResolution()+"p.m3u8";
+				captureM3U8(m3u8Url);
+			});
+			logger.info("HlsCapturerJobName for stream {} at {} is {}", streamId, getOrigin(), hlsJobName);
+		}
 	}
 
 	public void captureM3U8(String m3u8Url) {
-		
+
 		HttpGet httpGet = new HttpGet(m3u8Url);
 
 		try {
@@ -172,9 +185,13 @@ public class StreamCapturer {
 	}
 
 	public void stopCapturing() {
-		logger.info("stopCapturing for stream {} at {}", streamId, getOrigin());
-		getVertx().cancelTimer(pngJobName);
-		getVertx().cancelTimer(hlsJobName);
+		synchronized (lock) {
+			logger.info("stopCapturing for stream {} at {}", streamId, getOrigin());
+			stopCalled.set(true);
+			getVertx().cancelTimer(originCheckJobName);
+			getVertx().cancelTimer(pngJobName);
+			getVertx().cancelTimer(hlsJobName);
+		}
 	}
 
 	public ArrayList<HLSSegment> getAllSegments() {
@@ -204,5 +221,19 @@ public class StreamCapturer {
 		this.origin = origin;
 	}
 
+	public void checkOrigin(int period, String sourceApp) {
+		originCheckJobName = getVertx().setPeriodic(period, (id) -> {
+			String originLocal = DBReader.instance.getHost(streamId, sourceApp);
 
+			if(originLocal != null) {
+				setOrigin(originLocal);
+				logger.info("origin determined for {} as {}", streamId, origin);
+				startCapturing();
+				getVertx().cancelTimer(id);
+			}
+			else {
+				logger.info("origin undetermined for {}, stream has not started yet", streamId);
+			}
+		});
+	}
 }

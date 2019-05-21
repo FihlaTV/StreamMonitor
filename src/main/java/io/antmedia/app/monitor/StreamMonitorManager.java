@@ -55,20 +55,7 @@ public class StreamMonitorManager {
 		
 		StreamCapturer capturer = new StreamCapturer(streamId, this);
 		getActiveStreams().put(streamId, capturer);
-
-		getVertx().setPeriodic(Math.min(previewCapturePeriod, hlsCapturePeriod), (id) -> {
-			String origin = DBReader.instance.getHost(streamId, sourceApp);
-
-			if(origin != null) {
-				capturer.setOrigin(origin);
-				logger.info("origin determined for {} as {}", streamId, origin);
-				capturer.startCapturing();
-				getVertx().cancelTimer(id);
-			}
-			else {
-				logger.info("origin undetermined for {}, stream has not started yet", streamId);
-			}
-		});
+		capturer.checkOrigin(Math.min(previewCapturePeriod, hlsCapturePeriod), sourceApp);
 	}
 
 	public void stopCapturing(String streamId) {
