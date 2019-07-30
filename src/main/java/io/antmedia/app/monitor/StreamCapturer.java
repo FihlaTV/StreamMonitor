@@ -9,11 +9,14 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CookieStore;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.BasicCookieStore;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
@@ -54,12 +57,11 @@ public class StreamCapturer {
 	private AtomicBoolean stopCalled = new AtomicBoolean(false);
 	private Object lock = new Object();
 
-	public StreamCapturer(String streamId, StreamMonitorManager manager) {
+	public StreamCapturer(String streamId, StreamMonitorManager manager, String scopeName) {
 		this.streamId = streamId;
 		this.manager = manager;
 
-		baseDir = "webapps/"
-				+ StreamMonitorApplication.scope.getName();
+		baseDir = "webapps/" + scopeName;
 	}
 
 	public void startCapturing() {
@@ -70,7 +72,7 @@ public class StreamCapturer {
 			}
 			initDirs();
 
-			pngJobName = getVertx().setPeriodic(manager.getPreviewCapturePeriod(), (l) -> {
+			pngJobName = getVertx().setPeriodic(manager.getPreviewCapturePeriod(), l -> {
 				String pngUrl = "http://"+getOrigin()+":5080/"+manager.getSourceApp()+"/previews/"+streamId+".png";
 				copyURLtoFile(pngUrl, new File(pngDir, System.currentTimeMillis()+".png"));
 			});
@@ -88,14 +90,19 @@ public class StreamCapturer {
 
 		HttpGet httpGet = new HttpGet(m3u8Url);
 
-		try {
-			CloseableHttpResponse response = HttpClients.createDefault().execute(httpGet, httpContext);
+		RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(5 * 1000).setSocketTimeout(8*1000).build();
+
+		try (CloseableHttpClient httpClient = HttpClients.createDefault())
+		{
+			httpGet.setConfig(requestConfig);
+			CloseableHttpResponse response = httpClient.execute(httpGet, httpContext);
+			
 			String m3u8Content = EntityUtils.toString(response.getEntity());
 			downloadTsFiles(m3u8Content);
 		} catch (ClientProtocolException e) {
-			logger.error(e.getMessage());
+			logger.error(ExceptionUtils.getStackTrace(e));
 		} catch (IOException e) {
-			logger.error(e.getMessage());
+			logger.error(ExceptionUtils.getStackTrace(e));
 		}		
 	}
 
@@ -111,13 +118,18 @@ public class StreamCapturer {
 	}
 
 	public void downloadTsFiles(String m3u8Content) {
-
+		try {
 		ArrayList<HLSSegment> segments = parseM3u8(m3u8Content);
-		for (HLSSegment segment : segments) {
-			downloadSegment(segment);
+			for (HLSSegment segment : segments) {
+				downloadSegment(segment);
+			}
+			allSegments.addAll(segments);
+			updateM3U8Files();
 		}
-		allSegments.addAll(segments);
-		updateM3U8Files();
+		catch (StringIndexOutOfBoundsException ex) {
+			logger.error("Content is {}", m3u8Content);
+			logger.error(ExceptionUtils.getStackTrace(ex));
+		}
 	}
 
 	public void downloadSegment(HLSSegment segment) {
@@ -127,11 +139,11 @@ public class StreamCapturer {
 
 	public void copyURLtoFile(String url, File file) {
 		try {
-			FileUtils.copyURLToFile(new URL(url), file);
+			FileUtils.copyURLToFile(new URL(url), file, 5000, 10000);
 		} catch (MalformedURLException e) {
-			logger.error(e.getMessage());
+			logger.error(ExceptionUtils.getStackTrace(e));
 		} catch (IOException e) {
-			logger.error(e.getMessage());
+			logger.error(ExceptionUtils.getStackTrace(e));
 		}
 
 	}
@@ -147,7 +159,7 @@ public class StreamCapturer {
 			}
 			fw.close();
 		} catch (IOException e) {
-			logger.error(e.getMessage());
+			logger.error(ExceptionUtils.getStackTrace(e));
 		}
 
 	}
@@ -198,7 +210,7 @@ public class StreamCapturer {
 		return allSegments;
 	}
 
-	public class HLSSegment {
+	public static class HLSSegment {
 		public String name;
 		public String info;
 
@@ -222,7 +234,7 @@ public class StreamCapturer {
 	}
 
 	public void checkOrigin(int period, String sourceApp) {
-		originCheckJobName = getVertx().setPeriodic(period, (id) -> {
+		originCheckJobName = getVertx().setPeriodic(period, id -> {
 			String originLocal = DBReader.instance.getHost(streamId, sourceApp);
 
 			if(originLocal != null) {

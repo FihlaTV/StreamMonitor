@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.annotation.Nullable;
 import javax.servlet.ServletContext;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -16,11 +17,14 @@ import javax.ws.rs.core.MediaType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.WebApplicationContext;
 
 import com.google.gson.Gson;
 
+import io.antmedia.AntMediaApplicationAdapter;
 import io.antmedia.app.StreamMonitorApplication;
 import io.antmedia.app.monitor.StreamCapturer;
 import io.antmedia.app.monitor.StreamMonitorManager;
@@ -37,6 +41,10 @@ public class RestService {
 	private ServletContext servletContext;
 	
 	StreamMonitorManager manager;
+
+	private ApplicationContext appCtx;
+
+	private AntMediaApplicationAdapter appInstance;
 
 	public StreamMonitorManager getManager() {
 		if(manager == null) {
@@ -61,10 +69,29 @@ public class RestService {
 	public Result addStream(@PathParam("id") String streamId, @RequestParam("id") String origin) {
 		boolean result = true;
 		
-		String message = getManager().recordStream(streamId);
+		String message = getManager().recordStream(streamId, getApplication().getScope().getName());
 		Result operationResult = new Result(result);
 		operationResult.setMessage(message);
 		return operationResult;
+	}
+	
+	@Nullable
+	protected ApplicationContext getAppContext() {
+		if (servletContext != null) {
+			appCtx = (ApplicationContext) servletContext
+					.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
+		}
+		return appCtx;
+	}
+	
+	public AntMediaApplicationAdapter getApplication() {
+		if (appInstance == null) {
+			ApplicationContext appContext = getAppContext();
+			if (appContext != null) {
+				appInstance = (AntMediaApplicationAdapter) appContext.getBean(AntMediaApplicationAdapter.BEAN_NAME);
+			}
+		}
+		return appInstance;
 	}
 
 	/**

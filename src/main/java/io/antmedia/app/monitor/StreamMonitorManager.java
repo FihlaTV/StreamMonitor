@@ -23,12 +23,12 @@ public class StreamMonitorManager {
 	private Logger logger = LoggerFactory.getLogger(StreamMonitorManager.class);
 	private ConcurrentHashMap<String, StreamCapturer> activeStreams = new ConcurrentHashMap<>();
 
-	public String recordStream(String streamId) {
+	public String recordStream(String streamId, String scopeName) {
 		logger.info("recordStream with id:{}", streamId);
 
 		String message;
 		if(!getActiveStreams().containsKey(streamId)) {
-			startCapturing(streamId);		
+			startCapturing(streamId, scopeName);		
 			message = streamId+" added.";
 		}
 		else {
@@ -48,12 +48,12 @@ public class StreamMonitorManager {
 		return message;
 	}
 
-	public void startCapturing(String streamId) {
+	public void startCapturing(String streamId, String scopeName) {
 		if(vertx == null) {
 			initVertx();
 		}
 		
-		StreamCapturer capturer = new StreamCapturer(streamId, this);
+		StreamCapturer capturer = new StreamCapturer(streamId, this, scopeName);
 		getActiveStreams().put(streamId, capturer);
 		capturer.checkOrigin(Math.min(previewCapturePeriod, hlsCapturePeriod), sourceApp);
 	}

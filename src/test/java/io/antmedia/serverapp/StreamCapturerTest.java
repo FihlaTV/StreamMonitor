@@ -9,11 +9,15 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.concurrent.TimeUnit;
+
+import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.red5.server.api.scope.IScope;
 
 import io.antmedia.app.StreamMonitorApplication;
 import io.antmedia.app.monitor.StreamCapturer;
+import io.antmedia.app.monitor.StreamCapturer.HLSSegment;
 import io.antmedia.app.monitor.StreamMonitorManager;
 
 public class StreamCapturerTest {
@@ -43,7 +47,7 @@ public class StreamCapturerTest {
 	public void testParseM3U8() {
 		StreamMonitorApplication.scope = mock(IScope.class);
 		StreamMonitorManager manager = new StreamMonitorManager();
-		StreamCapturer scReal = new StreamCapturer("", manager);
+		StreamCapturer scReal = new StreamCapturer("", manager, "scope");
 		StreamCapturer sc = spy(scReal);
 		doNothing().when(sc).downloadSegment(any());
 		doNothing().when(sc).updateM3U8Files();
@@ -57,6 +61,47 @@ public class StreamCapturerTest {
 		assertEquals("streamId_480p0005.ts", sc.getAllSegments().get(sc.getAllSegments().size()-1).name);
 	}
 	
+	
+	
+	boolean methodReturned = false;
+	
+	@Test
+	public void testTimeout() {
+		
+		StreamMonitorManager manager = new StreamMonitorManager();
+		manager.setSourceApp("sourceApp");
+		
+		StreamCapturer capturer = new StreamCapturer("streamId", manager, "scope");
+		
+		capturer.setOrigin("www.google.com");
+		methodReturned = false;
+		
+		new Thread() {
+			@Override
+			public void run() {
+				capturer.downloadSegment(new HLSSegment("streamId", null));
+				methodReturned = true;
+			}
+		}.start();
+		
+		
+		Awaitility.await().atMost(15000, TimeUnit.MILLISECONDS).until(() -> methodReturned);
+		
+		methodReturned = false;
+		
+		new Thread() {
+			@Override
+			public void run() {
+				capturer.captureM3U8("http://123.33.22.1");
+				methodReturned = true;
+			}
+		}.start();
+		
+		Awaitility.await().atMost(15000, TimeUnit.MILLISECONDS).until(() -> methodReturned);
+		
+		
+	}
+	
 	@Test
 	public void testSettings() {
 		StreamMonitorApplication.scope = mock(IScope.class);
@@ -67,7 +112,7 @@ public class StreamCapturerTest {
 		manager.setSourceApp("DummyApp");
 		manager.setHlsResolution("240");
 		
-		StreamCapturer scReal = new StreamCapturer("test_stream", manager);
+		StreamCapturer scReal = new StreamCapturer("test_stream", manager, "scope");
 		scReal.setOrigin("origin_url");
 		
 		StreamCapturer sc = spy(scReal);
