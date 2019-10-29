@@ -15,6 +15,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
+import org.red5.server.adapter.MultiThreadedApplicationAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -44,7 +45,7 @@ public class RestService {
 
 	private ApplicationContext appCtx;
 
-	private AntMediaApplicationAdapter appInstance;
+	private MultiThreadedApplicationAdapter appInstance;
 
 	public StreamMonitorManager getManager() {
 		if(manager == null) {
@@ -84,11 +85,11 @@ public class RestService {
 		return appCtx;
 	}
 	
-	public AntMediaApplicationAdapter getApplication() {
+	public MultiThreadedApplicationAdapter getApplication() {
 		if (appInstance == null) {
 			ApplicationContext appContext = getAppContext();
 			if (appContext != null) {
-				appInstance = (AntMediaApplicationAdapter) appContext.getBean(AntMediaApplicationAdapter.BEAN_NAME);
+				appInstance = (MultiThreadedApplicationAdapter) appContext.getBean(AntMediaApplicationAdapter.BEAN_NAME);
 			}
 		}
 		return appInstance;

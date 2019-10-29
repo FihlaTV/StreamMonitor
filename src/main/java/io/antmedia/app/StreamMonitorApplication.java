@@ -1,5 +1,6 @@
 package io.antmedia.app;
 
+import org.red5.server.adapter.MultiThreadedApplicationAdapter;
 import org.red5.server.api.IConnection;
 import org.red5.server.api.scope.IScope;
 import org.slf4j.Logger;
@@ -12,7 +13,7 @@ import io.antmedia.AntMediaApplicationAdapter;
  * 
  * @author The Red5 Project (red5@osflash.org)
  */
-public class StreamMonitorApplication extends AntMediaApplicationAdapter {
+public class StreamMonitorApplication extends MultiThreadedApplicationAdapter {
 
 	protected static Logger logger = LoggerFactory.getLogger(StreamMonitorApplication.class);
 	public static IScope scope;
