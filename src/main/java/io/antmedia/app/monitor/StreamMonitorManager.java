@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 
 import io.antmedia.AntMediaApplicationAdapter;
 import io.antmedia.app.StreamMonitorApplication;
-import io.antmedia.cluster.DBReader;
 import io.vertx.core.Vertx;
 
 public class StreamMonitorManager {

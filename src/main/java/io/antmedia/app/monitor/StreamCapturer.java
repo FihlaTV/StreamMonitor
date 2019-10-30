@@ -21,11 +21,14 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
+import org.red5.server.api.scope.IScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.antmedia.app.StreamMonitorApplication;
-import io.antmedia.cluster.DBReader;
+import io.antmedia.datastore.db.DataStore;
+import io.antmedia.datastore.db.IDataStoreFactory;
+import io.antmedia.datastore.db.types.Broadcast;
 import io.vertx.core.Vertx;
 
 public class StreamCapturer {
@@ -235,7 +238,16 @@ public class StreamCapturer {
 
 	public void checkOrigin(int period, String sourceApp) {
 		originCheckJobName = getVertx().setPeriodic(period, id -> {
-			String originLocal = DBReader.instance.getHost(streamId, sourceApp);
+			IScope parent = StreamMonitorApplication.scope.getParent();
+			IScope webrtcAppScope = parent .getScope("WebRTCAppEE");
+			IDataStoreFactory dsf = (IDataStoreFactory) webrtcAppScope.getContext().getBean(IDataStoreFactory.BEAN_NAME);
+			DataStore dataStore = dsf.getDataStore();
+			Broadcast broadcast = dataStore.get(streamId);
+			
+			String originLocal = null;
+			if (broadcast != null) {
+				originLocal = broadcast.getOriginAdress();
+			}
 
 			if(originLocal != null) {
 				setOrigin(originLocal);
